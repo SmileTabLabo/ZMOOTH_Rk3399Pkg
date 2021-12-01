@@ -81,6 +81,8 @@ jobs:
         edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/loaderimage --pack --uboot Build/Rk3399-SDK/DEBUG_GCC5/FV/RK3399_SDK_UEFI.fd RK3399_SDK_UEFI.img
         mkdir /workspace/uefi_output
         cp /workspace/RK3399_SDK_UEFI.img /workspace/uefi_output
+        cp /workspace/edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/Bin/idbloader.bin /workspace/uefi_output
+        cp /workspace/edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/Bin/trust.img /workspace/uefi_output
 
     - name: Check space usage
       if: (!cancelled())
