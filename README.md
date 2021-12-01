@@ -6,7 +6,7 @@ Now with ACPI...and (almost working) USB!
 
 This is a version of the Rockchip 3399 UEFI firmware from https://github.com/andreiw/rk3399-edk2
 
-## Building on vanilla ubuntu 18.04
+## Building on ubuntu 18.04
 
 ```
 apt-get install build-essential acpica-tools nasm uuid-dev gcc-aarch64-linux-gnu
