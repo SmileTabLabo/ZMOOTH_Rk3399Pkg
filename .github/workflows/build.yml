@@ -15,6 +15,7 @@ on:
 env:
   REPO_URL: https://github.com/chainsx/rk3399-edk2
   REPO_BRANCH: master
+  ACTIONS_ALLOW_UNSECURE_COMMANDS: true
   SSH_ACTIONS: false
   UPLOAD_BIN_DIR: false
   UPLOAD_FIRMWARE: true
