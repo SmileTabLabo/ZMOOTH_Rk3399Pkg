@@ -47,7 +47,7 @@ jobs:
         sudo chown $USER:$GROUPS $WORKSPACE
 
     - name: Clone source code
-      working-directory: /workdir
+      working-directory: /workspace
       run: |
         git clone https://github.com/tianocore/edk2.git
         pushd edk2
