@@ -42,9 +42,9 @@ jobs:
         sudo -E apt-get -qq clean
         sudo timedatectl set-timezone "$TZ"
         export WORKSPACE=/workspace
-        mkdir $WORKSPACE
-        cd $WORKSPACE
-        sudo chown $USER:$GROUPS $WORKSPACE
+        sudo mkdir -p /workspace
+        cd /workspace
+        sudo chown $USER:$GROUPS /workspace
 
     - name: Clone source code
       working-directory: /workspace
@@ -70,6 +70,7 @@ jobs:
     - name: Compile the firmware
       id: compile
       run: |
+        export WORKSPACE=/workspace
         export GCC5_AARCH64_PREFIX=aarch64-linux-gnu-
         export PACKAGES_PATH=$WORKSPACE/edk2:$WORKSPACE/edk2-platforms:$WORKSPACE/edk2-non-osi
         . edk2/edksetup.sh
