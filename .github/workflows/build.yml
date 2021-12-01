@@ -78,8 +78,8 @@ jobs:
         make -C edk2/BaseTools
         build -a AARCH64 -t GCC5 -p edk2-platforms/Platform/Rockchip/Rk3399Pkg/Rk3399-SDK.dsc -b DEBUG
         edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/loaderimage --pack --uboot Build/Rk3399-SDK/DEBUG_GCC5/FV/RK3399_SDK_UEFI.fd RK3399_SDK_UEFI.img
-        mkdir uefi_output
-        cp RK3399_SDK_UEFI.img uefi_output
+        mkdir /workspace/uefi_output
+        cp /workspace/RK3399_SDK_UEFI.img /workspace/uefi_output
 
     - name: Check space usage
       if: (!cancelled())
@@ -90,13 +90,13 @@ jobs:
       if: env.UPLOAD_BIN_DIR == 'true'
       with:
         name: efi_target
-        path: uefi_output
+        path: /workspace/uefi_output
 
     - name: Organize files
       id: organize
       if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
-        cd uefi_output
+        cd /workspace/uefi_output
         echo "::set-output name=status::success"
 
     - name: Upload firmware directory
