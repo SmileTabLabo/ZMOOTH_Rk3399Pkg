@@ -293,7 +293,7 @@
   ## Serial Terminal
   DEFINE SERIAL_BASE = 0xFF1A0000 # UART2
   gEfiMdeModulePkgTokenSpaceGuid.PcdSerialRegisterBase|$(SERIAL_BASE)
-  gEfiMdePkgTokenSpaceGuid.PcdUartDefaultBaudRate|115200
+  gEfiMdePkgTokenSpaceGuid.PcdUartDefaultBaudRate|1500000
   gEfiMdePkgTokenSpaceGuid.PcdUartDefaultDataBits|8
   gEfiMdePkgTokenSpaceGuid.PcdUartDefaultParity|0
   gEfiMdePkgTokenSpaceGuid.PcdUartDefaultStopBits|1
