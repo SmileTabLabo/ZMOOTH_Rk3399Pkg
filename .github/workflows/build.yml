@@ -73,6 +73,7 @@ jobs:
         export WORKSPACE=/workspace
         export GCC5_AARCH64_PREFIX=aarch64-linux-gnu-
         export PACKAGES_PATH=$WORKSPACE/edk2:$WORKSPACE/edk2-platforms:$WORKSPACE/edk2-non-osi
+        cd /workspace
         . edk2/edksetup.sh
         make -C edk2/BaseTools
         build -a AARCH64 -t GCC5 -p edk2-platforms/Platform/Rockchip/Rk3399Pkg/Rk3399-SDK.dsc -b DEBUG
