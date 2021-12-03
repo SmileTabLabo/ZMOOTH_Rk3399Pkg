@@ -1,19 +1,7 @@
-/** @file
-
-  Differentiated System Description Table Fields (DSDT)
-
-  Copyright (c) 2018, Linaro Ltd. All rights reserved.<BR>
-  Copyright (c) 2019, Andrey Warkentin <andrey.warkentin@gmail.com>
-
-  This program and the accompanying materials
-  are licensed and made available under the terms and conditions of the BSD License
-  which accompanies this distribution.  The full text of the license may be found at
-  http://opensource.org/licenses/bsd-license.php
-
-  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
-  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-
-**/
+/*
+ * Copyright (c) 2020, Xilin Wu <strongtz@yeah.net>
+ * 
+ */
 
 DefinitionBlock ("DSDT.aml", "DSDT", 2, "RKCP  ", "RK3399  ", 3)
 {
@@ -88,20 +76,102 @@ DefinitionBlock ("DSDT.aml", "DSDT", 2, "RKCP  ", "RK3399  ", 3)
             })
         }
 
-        Device (COM1)
+        Device (EHC0)
         {
-            Name (_HID, "RKCP8250")                             // _HID: Hardware ID
-            Name (_CID, Package() {"HISI0031", "8250dw"})       // _CID: Compatible ID
-            Name (_ADR, FixedPcdGet64(PcdSerialRegisterBase))   // _ADR: Address
-            Name (_CRS, ResourceTemplate ()                     // _CRS: Current Resource Settings
+            Name (_HID, "PNP0D20")      // _HID: Hardware ID
+            Name (_UID, 0x00)           // _UID: Unique ID
+            Name (_CCA, 0x00)           // Not coherent!
+
+            Name (_CRS, ResourceTemplate ()  // _CRS: Current Resource Settings
             {
                 Memory32Fixed (ReadWrite,
-                    FixedPcdGet64(PcdSerialRegisterBase),       // Address Base
-                    0x00000100,                                 // Address Length
+                    0xfe380000,         // Address Base (MMIO)
+                    0x00040000,         // Address Length
                     )
                 Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
                 {
-                  132
+                    0x0000003A,
+                }
+            })
+        }
+
+        Device (EHC1)
+        {
+            Name (_HID, "PNP0D20")
+            Name (_UID, 0x01)           // _UID: Unique ID
+            Name (_CCA, 0x00)
+
+            Name(_CRS, ResourceTemplate ()  // _CRS: Current Resource Settings
+            {
+                Memory32Fixed (ReadWrite,
+                    0xfe3c0000,         // Address Base (MMIO)
+                    0x00040000,         // Address Length
+                )
+                Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                {
+                    0x0000003E,
+                }
+            })
+        }
+
+        Device (USB0) {    //USB0
+            Name ( _ADR, 0xfe380000)  // _ADR: Address
+            Name (_CID, "ACPI\\PNP0D20")  // _CID: Compatible ID
+            Name (_HRV, 0x00)  // _HRV: Hardware Revision
+            Name (_UID, Zero)  // _UID: Unique ID
+            Method (_HID, 0, NotSerialized)  // _HID: Hardware ID
+            {
+                Return ("PNP0D20")
+            }
+            Method (_CRS, 0, NotSerialized)  // _CRS: Current Resource Settings
+            {
+                Store (0xfe380000, Local0)
+                Store (0x20000, Local1)
+                Return (UCRS (Local0, Local1, 58, 0x03))
+            }
+        }
+        
+        Device (USB1) {    //USB1
+            Name ( _ADR, 0xfe3c0000)  // _ADR: Address
+            Name (_CID, "ACPI\\PNP0D20")  // _CID: Compatible ID
+            Name (_HRV, 0x00)  // _HRV: Hardware Revision
+            Name (_UID, One)  // _UID: Unique ID
+            Method (_HID, 0, NotSerialized)  // _HID: Hardware ID
+            {
+                Return ("PNP0D20")
+            }
+            Method (_CRS, 0, NotSerialized)  // _CRS: Current Resource Settings
+            {
+                Store (0xfe3c0000, Local0)
+                Store (0x20000, Local1)
+                Return (UCRS (Local0, Local1, 62, 0x03))
+            }
+        }
+
+        Device (COM1)
+        {
+            Name (_HID, "RKCP8250")  // _HID: Hardware ID
+            Name (_CID, Package (0x02)  // _CID: Compatible ID
+            {
+                "HISI0031",
+                "8250dw"
+            })
+            Name (_ADR, 0xFF1A0000)  // _ADR: Address
+            Name (_CRS, ResourceTemplate ()  // _CRS: Current Resource Settings
+            {
+                Memory32Fixed (ReadWrite,
+                    0xFF1A0000,         // Address Base
+                    0x00010000,         // Address Length
+                    )
+                Interrupt (ResourceConsumer, Level, ActiveHigh, Exclusive, ,, )
+                {
+                    0x00000084,
+                }
+            })
+            Name (_DSD, Package () {
+                ToUUID("daffd814-6eba-4d8c-8a91-bc9bbf4aa301"),
+                Package () {
+                    Package () {"clock-frequency", 24000000},
                 }
             })
         }
