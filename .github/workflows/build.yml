@@ -37,8 +37,8 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
       run: |
         sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
-        sudo -E apt-get -qq update
-        sudo -E apt-get -qq install build-essential acpica-tools nasm uuid-dev gcc-aarch64-linux-gnu
+        sudo -E apt-get update
+        sudo -E apt-get install build-essential acpica-tools nasm uuid-dev gcc-aarch64-linux-gnu
         sudo timedatectl set-timezone "$TZ"
         export WORKSPACE=/workspace
         sudo mkdir -p /workspace
@@ -79,6 +79,7 @@ jobs:
         edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/loaderimage --pack --uboot Build/Rk3399-SDK/DEBUG_GCC5/FV/RK3399_SDK_UEFI.fd RK3399_SDK_UEFI.img
         mkdir /workspace/uefi_output
         cp /workspace/RK3399_SDK_UEFI.img /workspace/uefi_output
+        cp /workspace/Build/Rk3399-SDK/DEBUG_GCC5/FV/RK3399_SDK_UEFI.fd /workspace/uefi_output
         wget -O /workspace/uefi_output/idbloader.img https://github.com/chainsx/rk3399-edk2/raw/master/Rk3399Pkg/Tools/Bin/idbloader.img
         wget -O /workspace/uefi_output/trust.img https://github.com/chainsx/rk3399-edk2/raw/master/Rk3399Pkg/Tools/Bin/trust.img
 
