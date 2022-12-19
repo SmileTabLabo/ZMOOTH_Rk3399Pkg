@@ -13,7 +13,7 @@ on:
     types: started
 
 env:
-  REPO_URL: https://github.com/chainsx/rk3399-edk2
+  REPO_URL: https://github.com/shantur/rk3399-edk2
   REPO_BRANCH: master
   ACTIONS_ALLOW_UNSECURE_COMMANDS: true
   SSH_ACTIONS: false
@@ -60,7 +60,7 @@ jobs:
         pushd edk2-platforms
         git checkout 861c200cda1417539d46fe3b1eba2b582fa72cbb
         popd
-        git clone https://github.com/chainsx/rk3399-edk2.git edk2-platforms/Platform/Rockchip
+        git clone https://github.com/shantur/rk3399-edk2.git edk2-platforms/Platform/Rockchip
 
     - name: SSH connection to Actions
       uses: csexton/debugger-action@master
