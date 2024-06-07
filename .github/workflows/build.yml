@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+  workflow_dispatch:
 
 env:
   REPO_URL: https://github.com/shantur/rk3399-edk2
