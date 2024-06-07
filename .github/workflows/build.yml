@@ -10,7 +10,7 @@ env:
   REPO_URL: https://github.com/shantur/rk3399-edk2
   REPO_BRANCH: master
   ACTIONS_ALLOW_UNSECURE_COMMANDS: true
-  SSH_ACTIONS: false
+  SSH_ACTIONS: true
   UPLOAD_BIN_DIR: false
   UPLOAD_FIRMWARE: true
   UPLOAD_COWTRANSFER: false
