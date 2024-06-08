@@ -69,7 +69,44 @@ jobs:
         build -a AARCH64 -t GCC5 -p edk2-platforms/Platform/Rockchip/Rk3399Pkg/Rk3399-SDK.dsc -b DEBUG
         edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/loaderimage --pack --uboot Build/Rk3399-SDK/DEBUG_GCC5/FV/RK3399_SDK_UEFI.fd RK3399_SDK_UEFI.img
         mkdir /workspace/uefi_output
-    
+
+    - name: Create image file
+      run: |
+        # イメージファイル名とサイズ
+        IMAGE_FILE="/workspace/uefi_output/rk3399_image.img"
+        IMAGE_SIZE=$((262144 * 512))  # セクタ数 * セクタサイズ (512バイト)
+
+        # バイナリファイルのパス
+        IDBLOADER_BIN="/workspace/edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/Bin/idbloader.bin"
+        UEFI_IMG="/workspace/RK3399_SDK_UEFI.img"
+        TRUST_IMG="/workspace/edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/Bin/trust.img"
+
+        # イメージファイル作成
+        dd if=/dev/zero of=${IMAGE_FILE} bs=1 count=0 seek=${IMAGE_SIZE}
+
+        # ループバックデバイスに関連付け
+        LOOP_DEVICE=$(losetup --show -fP ${IMAGE_FILE})
+
+        # パーティション作成
+        parted ${LOOP_DEVICE} mklabel gpt
+        parted ${LOOP_DEVICE} mkpart loader1 64s 8063s
+        parted ${LOOP_DEVICE} mkpart reserved1 8064s 8191s
+        parted ${LOOP_DEVICE} mkpart reserved2 8192s 16383s
+        parted ${LOOP_DEVICE} mkpart loader2 16384s 24575s
+        parted ${LOOP_DEVICE} mkpart atf 24576s 32767s
+        parted ${LOOP_DEVICE} mkpart efi esp 32768s 262143s
+        parted ${LOOP_DEVICE} set 6 esp on
+
+        # 各パーティションにファイルを書き込む
+        dd if=${IDBLOADER_BIN} of=${LOOP_DEVICE}p1 bs=512 seek=64
+        dd if=${UEFI_IMG} of=${LOOP_DEVICE}p4 bs=512 seek=0
+        dd if=${TRUST_IMG} of=${LOOP_DEVICE}p5 bs=512 seek=0
+
+        # ループバックデバイスをデタッチ
+        losetup -d ${LOOP_DEVICE}
+
+        echo "イメージファイル ${IMAGE_FILE} が作成されました。"
+
     - name: SSH connection to Actions
       uses: csexton/debugger-action@master
       if: env.SSH_ACTIONS == 'true' || contains(github.event.action, 'ssh')
@@ -81,51 +118,8 @@ jobs:
         ls *
         cp /workspace/RK3399_SDK_UEFI.img /workspace/uefi_output
         cp /workspace/Build/Rk3399-SDK/DEBUG_GCC5/FV/RK3399_SDK_UEFI.fd /workspace/uefi_output
-        cp Rk3399Pkg/Tools/Bin/idbloader.img /workspace/uefi_output/idbloader.img 
-        cp Rk3399Pkg/Tools/Bin/trust.img /workspace/uefi_output/trust.img
-
-    - name: Create disk image
-      run: |
-        # 変数の定義
-        IMAGE="/workspace/uefi_output/disk.img"
-        SIZE="128M"
-        SECTOR_SIZE=512
-
-        # イメージファイルの作成
-        dd if=/dev/zero of=$IMAGE bs=$SIZE count=1
-
-        # パーティションテーブルの作成
-        parted $IMAGE --script mklabel gpt
-
-        # パーティションの作成
-        parted $IMAGE --script mkpart primary 64s 8063s
-        parted $IMAGE --script name 1 loader1
-        parted $IMAGE --script mkpart primary 8064s 8191s
-        parted $IMAGE --script name 2 reserved1
-        parted $IMAGE --script mkpart primary 8192s 16383s
-        parted $IMAGE --script name 3 reserved2
-        parted $IMAGE --script mkpart primary 16384s 24575s
-        parted $IMAGE --script name 4 loader2
-        parted $IMAGE --script mkpart primary 24576s 32767s
-        parted $IMAGE --script name 5 atf
-        parted $IMAGE --script mkpart ESP 32768s 262143s
-        parted $IMAGE --script name 6 efi_esp
-        parted $IMAGE --script set 6 boot on
-
-        # ファイルの書き込み
-        # loader1
-        dd if=/workspace/uefi_output/idbloader.img of=$IMAGE bs=$SECTOR_SIZE seek=64 conv=notrunc
-
-        # loader2
-        dd if=/workspace/uefi_output/RK3399_SDK_UEFI.img of=$IMAGE bs=$SECTOR_SIZE seek=16384 conv=notrunc
-
-        # atf
-        dd if=/workspace/uefi_output/trust.img of=$IMAGE bs=$SECTOR_SIZE seek=24576 conv=notrunc
-
-        # efi espのフォーマット
-        LOOP_DEV=$(losetup -fP --show $IMAGE)
-        mkfs.vfat ${LOOP_DEV}p6
-        losetup -d $LOOP_DEV
+        cp /workspace/edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/Bin/idbloader.bin /workspace/uefi_output/idbloader.bin 
+        cp /workspace/edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/Bin/trust.img /workspace/uefi_output/trust.img
 
     - name: Check space usage
       if: (!cancelled())
