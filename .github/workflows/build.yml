@@ -72,6 +72,7 @@ jobs:
 
     - name: Create image file
       run: |
+        sudo bash -c '
         # イメージファイル名とサイズ
         IMAGE_FILE="/workspace/uefi_output/rk3399_image.img"
         IMAGE_SIZE=$((262144 * 512))  # セクタ数 * セクタサイズ (512バイト)
@@ -85,27 +86,28 @@ jobs:
         dd if=/dev/zero of=${IMAGE_FILE} bs=1 count=0 seek=${IMAGE_SIZE}
 
         # ループバックデバイスに関連付け
-        LOOP_DEVICE=$(sudo losetup --show -fP ${IMAGE_FILE})
+        LOOP_DEVICE=$(losetup --show -fP ${IMAGE_FILE})
 
         # パーティション作成
-        sudo parted ${LOOP_DEVICE} mklabel gpt
-        sudo parted ${LOOP_DEVICE} mkpart loader1 64s 8063s
-        sudo parted ${LOOP_DEVICE} mkpart reserved1 8064s 8191s
-        sudo parted ${LOOP_DEVICE} mkpart reserved2 8192s 16383s
-        sudo parted ${LOOP_DEVICE} mkpart loader2 16384s 24575s
-        sudo parted ${LOOP_DEVICE} mkpart atf 24576s 32767s
-        sudo parted ${LOOP_DEVICE} mkpart efi esp 32768s 262143s
-        sudo parted ${LOOP_DEVICE} set 6 esp on
+        parted ${LOOP_DEVICE} mklabel gpt
+        parted ${LOOP_DEVICE} mkpart loader1 64s 8063s
+        parted ${LOOP_DEVICE} mkpart reserved1 8064s 8191s
+        parted ${LOOP_DEVICE} mkpart reserved2 8192s 16383s
+        parted ${LOOP_DEVICE} mkpart loader2 16384s 24575s
+        parted ${LOOP_DEVICE} mkpart atf 24576s 32767s
+        parted ${LOOP_DEVICE} mkpart esp fat32 32768s 262143s
+        parted ${LOOP_DEVICE} set 6 esp on
 
         # 各パーティションにファイルを書き込む
-        sudo dd if=${IDBLOADER_BIN} of=${LOOP_DEVICE}p1 bs=512 seek=64
-        sudo dd if=${UEFI_IMG} of=${LOOP_DEVICE}p4 bs=512 seek=0
-        sudo dd if=${TRUST_IMG} of=${LOOP_DEVICE}p5 bs=512 seek=0
+        dd if=${IDBLOADER_BIN} of=${LOOP_DEVICE}p1 bs=512 seek=64
+        dd if=${UEFI_IMG} of=${LOOP_DEVICE}p4 bs=512 seek=0
+        dd if=${TRUST_IMG} of=${LOOP_DEVICE}p5 bs=512 seek=0
 
         # ループバックデバイスをデタッチ
-        sudo losetup -d ${LOOP_DEVICE}
+        losetup -d ${LOOP_DEVICE}
 
         echo "イメージファイル ${IMAGE_FILE} が作成されました。"
+        '
 
     - name: SSH connection to Actions
       uses: csexton/debugger-action@master
