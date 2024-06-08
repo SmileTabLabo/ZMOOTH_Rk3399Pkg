@@ -120,8 +120,8 @@ jobs:
         ls *
         cp /workspace/RK3399_SDK_UEFI.img /workspace/uefi_output
         cp /workspace/Build/Rk3399-SDK/DEBUG_GCC5/FV/RK3399_SDK_UEFI.fd /workspace/uefi_output
-        cp /workspace/edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/Bin/idbloader.bin /workspace/uefi_output/idbloader.bin 
-        cp /workspace/edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/Bin/trust.img /workspace/uefi_output/trust.img
+        cp Rk3399Pkg/Tools/Bin/idbloader.img /workspace/uefi_output/idbloader.img 
+        cp Rk3399Pkg/Tools/Bin/trust.img /workspace/uefi_output/trust.img
 
     - name: Check space usage
       if: (!cancelled())
