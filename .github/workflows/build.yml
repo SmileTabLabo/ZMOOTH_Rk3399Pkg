@@ -55,7 +55,6 @@ jobs:
         popd
         git clone https://github.com/shantur/rk3399-edk2.git edk2-platforms/Platform/Rockchip
 
-
     - name: Compile the EDK2
       id: compile
       run: |
@@ -84,6 +83,50 @@ jobs:
         cp /workspace/Build/Rk3399-SDK/DEBUG_GCC5/FV/RK3399_SDK_UEFI.fd /workspace/uefi_output
         cp Rk3399Pkg/Tools/Bin/idbloader.img /workspace/uefi_output/idbloader.img 
         cp Rk3399Pkg/Tools/Bin/trust.img /workspace/uefi_output/trust.img
+
+    - name: Create disk image
+      run: |
+        # 変数の定義
+        IMAGE="/workspace/uefi_output/disk.img"
+        SIZE="128M"
+        SECTOR_SIZE=512
+
+        # イメージファイルの作成
+        dd if=/dev/zero of=$IMAGE bs=$SIZE count=1
+
+        # パーティションテーブルの作成
+        parted $IMAGE --script mklabel gpt
+
+        # パーティションの作成
+        parted $IMAGE --script mkpart primary 64s 8063s
+        parted $IMAGE --script name 1 loader1
+        parted $IMAGE --script mkpart primary 8064s 8191s
+        parted $IMAGE --script name 2 reserved1
+        parted $IMAGE --script mkpart primary 8192s 16383s
+        parted $IMAGE --script name 3 reserved2
+        parted $IMAGE --script mkpart primary 16384s 24575s
+        parted $IMAGE --script name 4 loader2
+        parted $IMAGE --script mkpart primary 24576s 32767s
+        parted $IMAGE --script name 5 atf
+        parted $IMAGE --script mkpart ESP 32768s 262143s
+        parted $IMAGE --script name 6 efi_esp
+        parted $IMAGE --script set 6 boot on
+
+        # ファイルの書き込み
+        # loader1
+        dd if=/workspace/uefi_output/idbloader.img of=$IMAGE bs=$SECTOR_SIZE seek=64 conv=notrunc
+
+        # loader2
+        dd if=/workspace/uefi_output/RK3399_SDK_UEFI.img of=$IMAGE bs=$SECTOR_SIZE seek=16384 conv=notrunc
+
+        # atf
+        dd if=/workspace/uefi_output/trust.img of=$IMAGE bs=$SECTOR_SIZE seek=24576 conv=notrunc
+
+        # efi espのフォーマット
+        LOOP_DEV=$(losetup -fP --show $IMAGE)
+        mkfs.vfat ${LOOP_DEV}p6
+        losetup -d $LOOP_DEV
+
     - name: Check space usage
       if: (!cancelled())
       run: df -hT
