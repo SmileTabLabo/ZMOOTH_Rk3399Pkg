@@ -59,7 +59,7 @@ jobs:
       uses: csexton/debugger-action@master
       if: env.SSH_ACTIONS == 'true' || contains(github.event.action, 'ssh')
 
-    - name: Compile the firmware
+    - name: Compile the EDK2
       id: compile
       run: |
         export WORKSPACE=/workspace
@@ -73,11 +73,16 @@ jobs:
         build -a AARCH64 -t GCC5 -p edk2-platforms/Platform/Rockchip/Rk3399Pkg/Rk3399-SDK.dsc -b DEBUG
         edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/loaderimage --pack --uboot Build/Rk3399-SDK/DEBUG_GCC5/FV/RK3399_SDK_UEFI.fd RK3399_SDK_UEFI.img
         mkdir /workspace/uefi_output
+
+    - name: Copy files
+      run: |
+        ls
+        pwd
+        ls *
         cp /workspace/RK3399_SDK_UEFI.img /workspace/uefi_output
         cp /workspace/Build/Rk3399-SDK/DEBUG_GCC5/FV/RK3399_SDK_UEFI.fd /workspace/uefi_output
         cp /workspace/Rk3399Pkg/Tools/Bin/idbloader.img /workspace/uefi_output/idbloader.img 
         cp /workspace/Rk3399Pkg/Tools/Bin/trust.img /workspace/uefi_output/trust.img
-
     - name: Check space usage
       if: (!cancelled())
       run: df -hT
