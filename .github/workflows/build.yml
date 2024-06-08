@@ -75,8 +75,8 @@ jobs:
         mkdir /workspace/uefi_output
         cp /workspace/RK3399_SDK_UEFI.img /workspace/uefi_output
         cp /workspace/Build/Rk3399-SDK/DEBUG_GCC5/FV/RK3399_SDK_UEFI.fd /workspace/uefi_output
-        wget -O /workspace/uefi_output/idbloader.img https://github.com/chainsx/rk3399-edk2/raw/master/Rk3399Pkg/Tools/Bin/idbloader.img
-        wget -O /workspace/uefi_output/trust.img https://github.com/chainsx/rk3399-edk2/raw/master/Rk3399Pkg/Tools/Bin/trust.img
+        cp /workspace/Rk3399Pkg/Tools/Bin/idbloader.img /workspace/uefi_output/idbloader.img 
+        cp /workspace/Rk3399Pkg/Tools/Bin/trust.img /workspace/uefi_output/trust.img
 
     - name: Check space usage
       if: (!cancelled())
