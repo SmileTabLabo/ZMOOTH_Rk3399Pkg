@@ -29,7 +29,6 @@ jobs:
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
-        sudo rm -rf /etc/apt/sources.list.d/* /usr/share/dotnet /usr/local/lib/android /opt/ghc
         sudo -E apt-get update
         sudo -E apt-get install build-essential acpica-tools nasm uuid-dev gcc-aarch64-linux-gnu
         sudo timedatectl set-timezone "$TZ"
