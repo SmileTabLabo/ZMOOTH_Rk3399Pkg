@@ -7,7 +7,6 @@ on:
   workflow_dispatch:
 
 env:
-  # 環境変数は変更していません
   REPO_URL: https://github.com/shantur/rk3399-edk2
   REPO_BRANCH: master
   SSH_ACTIONS: false
@@ -27,15 +26,9 @@ jobs:
 
     - name: 2. CondaとPython 2.7の手動インストール
       run: |
-        # Minicondaのインストーラーをダウンロード
         wget https://repo.anaconda.com/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh
-        # インストーラーをサイレントモードで実行
         bash miniconda.sh -b -p $HOME/miniconda
-        
-        # 後続のステップでcondaコマンドが使えるようにPATHを通す
         echo "$HOME/miniconda/bin" >> $GITHUB_PATH
-        
-        # インストールを確認
         echo "--- Python Version ---"
         python --version
         echo "--- Conda Version ---"
@@ -51,12 +44,16 @@ jobs:
         sudo mkdir -p /workspace
         sudo chown $USER:$GROUPS /workspace
 
-    - name: 4. 依存ソースコードのクローン
+    - name: 4. 依存ソースコードのクローンと準備
       working-directory: /workspace
-      # Conda環境を有効にするため、デフォルトのbashシェルを使用します
-      # (手動インストールで$GITHUB_PATHが設定されているため、shell: bash -l {0} は不要です)
       run: |
+        # prebuiltsディレクトリをコピー
         cp -r $GITHUB_WORKSPACE/prebuilts .
+
+        # ▼ 修正点1: コピーしたコンパイラに実行権限を付与 ▼
+        chmod +x -R ./prebuilts/gcc-linaro-7.1.1-2017.05-x86_64_aarch64-linux-gnu/bin/*
+
+        # 各ソースコードをクローン
         git clone https://github.com/tianocore/edk2.git
         pushd edk2
         git checkout 46f4c9677c615d862649459392f8f55b3e6567c2
@@ -73,20 +70,23 @@ jobs:
 
     - name: 5. EDK2のコンパイル
       id: compile
+      working-directory: /workspace
       run: |
-        export GCC5_AARCH64_PREFIX=$GITHUB_WORKSPACE/prebuilts/gcc-linaro-7.1.1-2017.05-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-
-        export WORKSPACE=/workspace""
+        # ▼ 修正点2: コンパイラのパスを /workspace 内のコピー先に修正 ▼
+        export GCC5_AARCH64_PREFIX=/workspace/prebuilts/gcc-linaro-7.1.1-2017.05-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-
+
+        # ▼ 修正点3: 余分なダブルクォーテーションを削除 ▼
+        export WORKSPACE=/workspace
+        
         export PACKAGES_PATH=$WORKSPACE/edk2:$WORKSPACE/edk2-platforms:$WORKSPACE/edk2-non-osi
-        # EDK2のビルドツールがPython 2を認識するように設定
         export PYTHON_COMMAND=$(which python)
 
-        sed -i 's/-Werror//g' $WORKSPACE/edk2/BaseTools/Source/C/Makefiles/header.makefile
-        cd /workspace
+        sed -i 's/-Werror//g' edk2/BaseTools/Source/C/Makefiles/header.makefile
         source edk2/edksetup.sh
         make -C edk2/BaseTools
         build -a AARCH64 -t GCC5 -p edk2-platforms/Platform/Rockchip/Rk3399Pkg/Rk3399-SDK.dsc -b DEBUG
         edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/loaderimage --pack --uboot Build/Rk3399-SDK/DEBUG_GCC5/FV/RK3399_SDK_UEFI.fd RK3399_SDK_UEFI.img
-        mkdir /workspace/uefi_output
+        mkdir uefi_output
 
     - name: 6. イメージファイルの作成
       run: |
@@ -97,11 +97,9 @@ jobs:
         UEFI_IMG="/workspace/RK3399_SDK_UEFI.img"
         TRUST_IMG="/workspace/edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/Bin/trust.img"
 
-        # イメージファイル作成
         dd if=/dev/zero of=${IMAGE_FILE} bs=1 count=0 seek=${IMAGE_SIZE}
         LOOP_DEVICE=$(losetup --show -fP ${IMAGE_FILE})
 
-        # パーティション作成
         parted ${LOOP_DEVICE} mklabel gpt
         parted ${LOOP_DEVICE} mkpart loader1 64s 8063s
         parted ${LOOP_DEVICE} mkpart reserved1 8064s 8191s
@@ -111,7 +109,6 @@ jobs:
         parted ${LOOP_DEVICE} mkpart esp fat32 32768s 262143s
         parted ${LOOP_DEVICE} set 6 esp on
 
-        # パーティションへの書き込み
         dd if=${IDBLOADER_BIN} of=${LOOP_DEVICE}p1 bs=512 seek=64
         dd if=${UEFI_IMG} of=${LOOP_DEVICE}p4 bs=512 seek=0
         dd if=${TRUST_IMG} of=${LOOP_DEVICE}p5 bs=512 seek=0
@@ -147,7 +144,6 @@ jobs:
       id: organize
       if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
-        # set-env/set-outputは非推奨のため、新しい形式に修正
         echo "FIRMWARE_PATH=/workspace/uefi_output" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
 
