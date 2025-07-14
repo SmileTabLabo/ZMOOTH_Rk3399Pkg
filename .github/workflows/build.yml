@@ -29,17 +29,14 @@ jobs:
         wget https://repo.anaconda.com/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh
         bash miniconda.sh -b -p $HOME/miniconda
         echo "$HOME/miniconda/bin" >> $GITHUB_PATH
-        echo "--- Python Version ---"
-        python --version
-        echo "--- Conda Version ---"
-        conda --version
 
     - name: 3. ビルド環境の初期化
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
         sudo -E apt-get update
-        sudo -E apt-get install -y build-essential acpica-tools nasm uuid-dev
+        # ▼▼▼【今回の修正点】32bit互換ライブラリを追加 ▼▼▼
+        sudo -E apt-get install -y build-essential acpica-tools nasm uuid-dev libc6-i386
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workspace
         sudo chown $USER:$GROUPS /workspace
@@ -49,6 +46,7 @@ jobs:
       run: |
         cp -r $GITHUB_WORKSPACE/prebuilts .
         chmod +x -R ./prebuilts/gcc-linaro-7.1.1-2017.05-x86_64_aarch64-linux-gnu/bin/*
+        chmod +x -R ./prebuilts/gcc-linaro-7.1.1-2017.05-x86_64_aarch64-linux-gnu/libexec/gcc/aarch64-linux-gnu/7.1.1/*
         git clone https://github.com/tianocore/edk2.git
         pushd edk2
         git checkout 46f4c9677c615d862649459392f8f55b3e6567c2
@@ -67,23 +65,8 @@ jobs:
       id: compile
       working-directory: /workspace
       run: |
-        # --- ▼▼▼ デバッグと修正 ▼▼▼ ---
-        echo "--- 1. PATH設定前の状態 ---"
-        echo $PATH
-
-        # プリビルドGCCのbinディレクトリをPATH環境変数に追加
         export GCC_BIN_DIR="/workspace/prebuilts/gcc-linaro-7.1.1-2017.05-x86_64_aarch64-linux-gnu/bin"
         export PATH="$GCC_BIN_DIR:$PATH"
-        
-        echo "--- 2. PATH設定後の状態 ---"
-        echo $PATH
-
-        echo "--- 3. コンパイラの場所を確認 ---"
-        which aarch64-linux-gnu-gcc
-
-        echo "--- 4. ビルド開始 ---"
-        # --- ▲▲▲ デバッグと修正 ▲▲▲ ---
-
         export GCC5_AARCH64_PREFIX=/workspace/prebuilts/gcc-linaro-7.1.1-2017.05-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-
         export WORKSPACE=/workspace
         export PACKAGES_PATH=$WORKSPACE/edk2:$WORKSPACE/edk2-platforms:$WORKSPACE/edk2-non-osi
