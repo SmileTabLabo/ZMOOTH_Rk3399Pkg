@@ -63,6 +63,7 @@ jobs:
         export PACKAGES_PATH=$WORKSPACE/edk2:$WORKSPACE/edk2-platforms:$WORKSPACE/edk2-non-osi
         export CFLAGS="-Wno-error"
         export CXXFLAGS="-Wno-error"
+        sed -i 's/-Werror//g' $WORKSPACE/edk2/BaseTools/Source/C/Makefiles/header.makefile
         cd /workspace
         . edk2/edksetup.sh
         make -C edk2/BaseTools
