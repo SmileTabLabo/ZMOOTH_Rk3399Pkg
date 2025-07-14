@@ -47,13 +47,8 @@ jobs:
     - name: 4. 依存ソースコードのクローンと準備
       working-directory: /workspace
       run: |
-        # prebuiltsディレクトリをコピー
         cp -r $GITHUB_WORKSPACE/prebuilts .
-
-        # ▼ 修正点1: コピーしたコンパイラに実行権限を付与 ▼
         chmod +x -R ./prebuilts/gcc-linaro-7.1.1-2017.05-x86_64_aarch64-linux-gnu/bin/*
-
-        # 各ソースコードをクローン
         git clone https://github.com/tianocore/edk2.git
         pushd edk2
         git checkout 46f4c9677c615d862649459392f8f55b3e6567c2
@@ -72,12 +67,10 @@ jobs:
       id: compile
       working-directory: /workspace
       run: |
-        # ▼ 修正点2: コンパイラのパスを /workspace 内のコピー先に修正 ▼
-        export GCC5_AARCH64_PREFIX=/workspace/prebuilts/gcc-linaro-7.1.1-2017.05-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-
+        export PATH="/workspace/prebuilts/gcc-linaro-7.1.1-2017.05-x86_64_aarch64-linux-gnu/bin:$PATH"
 
-        # ▼ 修正点3: 余分なダブルクォーテーションを削除 ▼
+        export GCC5_AARCH64_PREFIX=/workspace/prebuilts/gcc-linaro-7.1.1-2017.05-x86_64_aarch64-linux-gnu/bin/aarch64-linux-gnu-
         export WORKSPACE=/workspace
-        
         export PACKAGES_PATH=$WORKSPACE/edk2:$WORKSPACE/edk2-platforms:$WORKSPACE/edk2-non-osi
         export PYTHON_COMMAND=$(which python)
 
@@ -88,6 +81,7 @@ jobs:
         edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/loaderimage --pack --uboot Build/Rk3399-SDK/DEBUG_GCC5/FV/RK3399_SDK_UEFI.fd RK3399_SDK_UEFI.img
         mkdir uefi_output
 
+    # ...以降のステップは変更なし...
     - name: 6. イメージファイルの作成
       run: |
         sudo bash -c '
@@ -96,10 +90,8 @@ jobs:
         IDBLOADER_BIN="/workspace/edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/Bin/idbloader.bin"
         UEFI_IMG="/workspace/RK3399_SDK_UEFI.img"
         TRUST_IMG="/workspace/edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/Bin/trust.img"
-
         dd if=/dev/zero of=${IMAGE_FILE} bs=1 count=0 seek=${IMAGE_SIZE}
         LOOP_DEVICE=$(losetup --show -fP ${IMAGE_FILE})
-
         parted ${LOOP_DEVICE} mklabel gpt
         parted ${LOOP_DEVICE} mkpart loader1 64s 8063s
         parted ${LOOP_DEVICE} mkpart reserved1 8064s 8191s
@@ -108,11 +100,9 @@ jobs:
         parted ${LOOP_DEVICE} mkpart atf 24576s 32767s
         parted ${LOOP_DEVICE} mkpart esp fat32 32768s 262143s
         parted ${LOOP_DEVICE} set 6 esp on
-
         dd if=${IDBLOADER_BIN} of=${LOOP_DEVICE}p1 bs=512 seek=64
         dd if=${UEFI_IMG} of=${LOOP_DEVICE}p4 bs=512 seek=0
         dd if=${TRUST_IMG} of=${LOOP_DEVICE}p5 bs=512 seek=0
-
         losetup -d ${LOOP_DEVICE}
         echo "イメージファイル ${IMAGE_FILE} が作成されました。"
         '
