@@ -35,8 +35,7 @@ jobs:
         DEBIAN_FRONTEND: noninteractive
       run: |
         sudo -E apt-get update
-        # ▼▼▼【今回の修正点】32bit互換ライブラリを追加 ▼▼▼
-        sudo -E apt-get install -y build-essential acpica-tools nasm uuid-dev libc6-i386
+        sudo -E apt-get install -y build-essential acpica-tools nasm uuid-dev gcc-aarch64-linux-gnu
         sudo timedatectl set-timezone "$TZ"
         sudo mkdir -p /workspace
         sudo chown $USER:$GROUPS /workspace
