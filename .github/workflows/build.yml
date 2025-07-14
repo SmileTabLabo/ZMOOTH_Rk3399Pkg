@@ -7,6 +7,7 @@ on:
   workflow_dispatch:
 
 env:
+  # 環境変数は変更していません
   REPO_URL: https://github.com/shantur/rk3399-edk2
   REPO_BRANCH: master
   SSH_ACTIONS: false
@@ -21,17 +22,26 @@ jobs:
     runs-on: ubuntu-24.04
 
     steps:
-    - name: Checkout
+    - name: 1. ソースコードのチェックアウト
       uses: actions/checkout@v4
 
-    # Conda環境とPython 2.7をセットアップするステップを追加
-    - name: Set up Conda and Python 2.7
-      uses: conda-actions/setup-miniconda@v3
-      with:
-        python-version: 2.7
-        auto-update-conda: true
+    - name: 2. CondaとPython 2.7の手動インストール
+      run: |
+        # Minicondaのインストーラーをダウンロード
+        wget https://repo.anaconda.com/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh
+        # インストーラーをサイレントモードで実行
+        bash miniconda.sh -b -p $HOME/miniconda
+        
+        # 後続のステップでcondaコマンドが使えるようにPATHを通す
+        echo "$HOME/miniconda/bin" >> $GITHUB_PATH
+        
+        # インストールを確認
+        echo "--- Python Version ---"
+        python --version
+        echo "--- Conda Version ---"
+        conda --version
 
-    - name: Initialization environment
+    - name: 3. ビルド環境の初期化
       env:
         DEBIAN_FRONTEND: noninteractive
       run: |
@@ -41,10 +51,10 @@ jobs:
         sudo mkdir -p /workspace
         sudo chown $USER:$GROUPS /workspace
 
-    - name: Clone source code
+    - name: 4. 依存ソースコードのクローン
       working-directory: /workspace
-      # Conda環境を有効にするためにshellを指定
-      shell: bash -l {0}
+      # Conda環境を有効にするため、デフォルトのbashシェルを使用します
+      # (手動インストールで$GITHUB_PATHが設定されているため、shell: bash -l {0} は不要です)
       run: |
         git clone https://github.com/tianocore/edk2.git
         pushd edk2
@@ -60,41 +70,34 @@ jobs:
         popd
         git clone https://github.com/shantur/rk3399-edk2.git edk2-platforms/Platform/Rockchip
 
-    - name: Compile the EDK2
+    - name: 5. EDK2のコンパイル
       id: compile
-      # Conda環境を有効にするためにshellを指定
-      shell: bash -l {0}
       run: |
         export WORKSPACE=/workspace
         export GCC5_AARCH64_PREFIX=aarch64-linux-gnu-
         export PACKAGES_PATH=$WORKSPACE/edk2:$WORKSPACE/edk2-platforms:$WORKSPACE/edk2-non-osi
-        # EDK2のビルドツールはPython 2を必要とする
+        # EDK2のビルドツールがPython 2を認識するように設定
         export PYTHON_COMMAND=$(which python)
 
         sed -i 's/-Werror//g' $WORKSPACE/edk2/BaseTools/Source/C/Makefiles/header.makefile
         cd /workspace
-        . edk2/edksetup.sh
+        source edk2/edksetup.sh
         make -C edk2/BaseTools
         build -a AARCH64 -t GCC5 -p edk2-platforms/Platform/Rockchip/Rk3399Pkg/Rk3399-SDK.dsc -b DEBUG
         edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/loaderimage --pack --uboot Build/Rk3399-SDK/DEBUG_GCC5/FV/RK3399_SDK_UEFI.fd RK3399_SDK_UEFI.img
         mkdir /workspace/uefi_output
 
-    - name: Create image file
+    - name: 6. イメージファイルの作成
       run: |
         sudo bash -c '
-        # イメージファイル名とサイズ
         IMAGE_FILE="/workspace/uefi_output/rk3399_image.img"
-        IMAGE_SIZE=$((262144 * 512))  # セクタ数 * セクタサイズ (512バイト)
-
-        # バイナリファイルのパス
+        IMAGE_SIZE=$((262144 * 512))
         IDBLOADER_BIN="/workspace/edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/Bin/idbloader.bin"
         UEFI_IMG="/workspace/RK3399_SDK_UEFI.img"
         TRUST_IMG="/workspace/edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/Bin/trust.img"
 
         # イメージファイル作成
         dd if=/dev/zero of=${IMAGE_FILE} bs=1 count=0 seek=${IMAGE_SIZE}
-
-        # ループバックデバイスに関連付け
         LOOP_DEVICE=$(losetup --show -fP ${IMAGE_FILE})
 
         # パーティション作成
@@ -107,53 +110,49 @@ jobs:
         parted ${LOOP_DEVICE} mkpart esp fat32 32768s 262143s
         parted ${LOOP_DEVICE} set 6 esp on
 
-        # 各パーティションにファイルを書き込む
+        # パーティションへの書き込み
         dd if=${IDBLOADER_BIN} of=${LOOP_DEVICE}p1 bs=512 seek=64
         dd if=${UEFI_IMG} of=${LOOP_DEVICE}p4 bs=512 seek=0
         dd if=${TRUST_IMG} of=${LOOP_DEVICE}p5 bs=512 seek=0
 
-        # ループバックデバイスをデタッチ
         losetup -d ${LOOP_DEVICE}
-
         echo "イメージファイル ${IMAGE_FILE} が作成されました。"
         '
 
-    - name: SSH connection to Actions
+    - name: 7. デバッグ用のSSH接続 (必要な場合)
       uses: csexton/debugger-action@master
-      if: env.SSH_ACTIONS == 'true' || contains(github.event.action, 'ssh')
-    
-    - name: Copy files
-      run: |
-        cd /workspace
-        cp /workspace/RK3399_SDK_UEFI.img /workspace/uefi_output
-        cp /workspace/Build/Rk3399-SDK/DEBUG_GCC5/FV/RK3399_SDK_UEFI.fd /workspace/uefi_output
-        cp edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/Bin/idbloader.img /workspace/uefi_output/idbloader.img 
-        cp edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/Bin/trust.img /workspace/uefi_output/trust.img
+      if: env.SSH_ACTIONS == 'true'
 
-    - name: Check space usage
+    - name: 8. ビルド成果物のコピー
+      working-directory: /workspace
+      run: |
+        cp RK3399_SDK_UEFI.img uefi_output/
+        cp Build/Rk3399-SDK/DEBUG_GCC5/FV/RK3399_SDK_UEFI.fd uefi_output/
+        cp edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/Bin/idbloader.img uefi_output/
+        cp edk2-platforms/Platform/Rockchip/Rk3399Pkg/Tools/Bin/trust.img uefi_output/
+
+    - name: 9. ディスク使用量の確認
       if: (!cancelled())
       run: df -hT
 
-    - name: Upload bin directory
+    - name: 10. binディレクトリのアップロード (必要な場合)
       uses: actions/upload-artifact@v4
       if: env.UPLOAD_BIN_DIR == 'true'
       with:
         name: efi_target
         path: /workspace/uefi_output
 
-    - name: Organize files
+    - name: 11. アップロード用ファイルの整理
       id: organize
       if: env.UPLOAD_FIRMWARE == 'true' && !cancelled()
       run: |
-        cd /workspace/uefi_output
-        # "set-env" は非推奨のため、$GITHUB_ENV を使用
-        echo "FIRMWARE_PATH=$PWD" >> $GITHUB_ENV
-        # "set-output" は非推奨のため、$GITHUB_OUTPUT を使用
+        # set-env/set-outputは非推奨のため、新しい形式に修正
+        echo "FIRMWARE_PATH=/workspace/uefi_output" >> $GITHUB_ENV
         echo "status=success" >> $GITHUB_OUTPUT
 
-    - name: Upload firmware directory
+    - name: 12. ファームウェアのアップロード
       uses: actions/upload-artifact@v4
       if: steps.organize.outputs.status == 'success' && !cancelled()
       with:
-        name: uefi_firmware
+        name: uefi_firmware_${{ github.run_id }}
         path: ${{ env.FIRMWARE_PATH }}
